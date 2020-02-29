@@ -4,19 +4,35 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
 
+/**
+ * A NumberList stores the array of NumberNodes and contains methods to
+ * perform on this array.
+ */
 public class NumberList {
 
-    /** EXCLUSIVE */
+    /** EXCLUSIVE BOUND */
     private static final int BOUND_LOW = 0;
-    /** EXCLUSIVE */
-    private static final int BOUND_HIGH = 20;
+    /** INCLUSIVE BOUND */
+    private static final int BOUND_HIGH = 10;
+
+    /** Initial capacity of the list */
     private static final int INITIAL_LIST_CAPACITY = 40;
+    /** The list of NumberNodes */
     private ArrayList<NumberNode> numberList = new ArrayList<>(INITIAL_LIST_CAPACITY);
 
+    /**
+     * Returns the upper bound of the randomly generated numbers in this numberList.
+     * This bound is inclusive.
+     * @return the inclusive upper bound of the randomly generated numbers in the numberList.
+     */
     public static int getBoundHigh() {
         return BOUND_HIGH;
     }
 
+    /**
+     * Constructor function for this Class.
+     * Initializes an instance of this Class.
+     */
     public NumberList()
     {
         Random r = new Random();
@@ -26,34 +42,61 @@ public class NumberList {
         }
     }
 
+    /**
+     * Checks if a combo exists in this numberList.
+     * @param startIndex the index to check from
+     * @param target the target to reach
+     * @return true if combo exists, false otherwise.
+     */
     public boolean checkForComboAt(int startIndex, int target)
     {
+        // SumList objects store a sum and the index they're found on.
         SumList sumListLeft = new SumList(), sumListRight = new SumList();
         sumListLeft.add(0, -1);
         sumListRight.add(0, -1);
+
+        /**
+         * Disregard all the numbers that cannot be part of the combo and return
+         * the shorter array with numbers that can.
+         */
         ShortList sl = findShortList(startIndex, target);
         NumberNode[] shortList = sl.getShortList();
 
+        // Set the index to start counting from for counting towards
+        // left and counting towards right.
         int leftStartIndex = sl.getStartIndex();
         int rightStartIndex = sl.getStartIndex() + 1;
 
+        // Create a temporary sum.
         int sum = 0;
+        // Go over all numbers in the short list left of (and including) the start index
         for (int i = leftStartIndex; i > -1; i--) {
+            // Increase the sum by the current value
             sum += shortList[i].getValue();
+            // Store the sum and at what index in the shortList the sum occured
             sumListLeft.add(sum, i);
         }
+        // Reset the temporary sum.
         sum = 0;
+        // Go over all numbers in the short list right of (and excluding) the start index
         for (int i = rightStartIndex; i < shortList.length; i++) {
+            // Increase the sum by the current value
             sum += shortList[i].getValue();
+            // Store the sum and at what index in the shortList the sum occured
             sumListRight.add(sum, i);
         }
 
-        for (int i = 0; i < sumListLeft.sumList.size(); i++) {
-            for (int j = 0; j < sumListRight.sumList.size(); j++) {
-                int current_sum = sumListLeft.sumList.get(i) + sumListRight.sumList.get(j);
+        // For both sumlists...
+        for (int sumListLeftIndex = 0; sumListLeftIndex < sumListLeft.sumList.size(); sumListLeftIndex++) {
+            for (int sumListRightIndex = 0; sumListRightIndex < sumListRight.sumList.size(); sumListRightIndex++) {
+                // Get the value of the currently selected sums added together
+                int current_sum = sumListLeft.sumList.get(sumListLeftIndex) + sumListRight.sumList.get(sumListRightIndex);
+
                 if (current_sum == target)
                 {
-                    for (int k = 0; k < i + 1; k++)
+                    // Found a combo!
+                    // Kill all nodes that make up this combination.
+                    for (int k = 0; k < sumListLeftIndex + 1; k++)
                     {
                         int index = sumListLeft.indexList.get(k);
                         if (index > -1)
@@ -61,7 +104,7 @@ public class NumberList {
                             shortList[index].kill();
                         }
                     }
-                    for (int k = 0; k < j + 1; k++)
+                    for (int k = 0; k < sumListRightIndex + 1; k++)
                     {
                         int index = sumListRight.indexList.get(k);
                         if (index > -1)
@@ -71,16 +114,20 @@ public class NumberList {
                     }
                     return true;
                 }
+                // If the combined sum is above it's target, no combo can be found, so
+                // stop looking any further.
                 else if (current_sum > target)
                 {
                     return false;
                 }
             }
-
         }
         return false;
     }
 
+    /**
+     * Removes dead nodes from the numberList.
+     */
     public void removeDeadNodes()
     {
         ArrayList<Integer> indexesToRemove = new ArrayList<>();
@@ -95,7 +142,6 @@ public class NumberList {
         }
 
         Collections.reverse(indexesToRemove);
-
         for (int i : indexesToRemove)
         {
             numberList.remove(i);
@@ -116,25 +162,25 @@ public class NumberList {
         int[] values = getValues();
 
         // Create the shortlist of numbers
-        ArrayList<NumberNode> tempList = new ArrayList<>();
+        ArrayList<NumberNode> shortList = new ArrayList<>();
         // Include all consecutive values to the left of startIndex until they exceed target
         int sum = 0;
         for (int i = startIndex; i > -1; i--) {
             // Add the current value to the sum
             NumberNode node = numberList.get(i);
             sum += node.getValue();
-            // If the sum exceeds the target, this number can't extend the combo and we can stop looking.
+            // If the sum exceeds the target, this number can't be part of the combo and we can stop looking.
             if (sum > target)
             {
                 break;
             }
             // Else we add it to the shortlist
-            tempList.add(node);
+            shortList.add(node);
         }
 
-        int newStartIndex = tempList.size() - 1;
+        int newStartIndex = shortList.size() - 1;
         // Reverse that list so it's in order of original array
-        Collections.reverse(tempList);
+        Collections.reverse(shortList);
 
         // Now add the numbers right of startIndex
         sum = 0;
@@ -151,20 +197,24 @@ public class NumberList {
             // (if it's not the start index, since that's already included)
             else if (i != startIndex)
             {
-                tempList.add(node);
+                shortList.add(node);
             }
         }
 
         // Now convert the ArrayList into an array of nodes
-        NumberNode[] nodes = new NumberNode[tempList.size()];
+        NumberNode[] shortArray = new NumberNode[shortList.size()];
         int index = 0;
-        for (NumberNode node : tempList)
+        for (NumberNode node : shortList)
         {
-            nodes[index++] = node;
+            shortArray[index++] = node;
         }
-        return new ShortList(nodes, newStartIndex);
+        return new ShortList(shortArray, newStartIndex);
     }
 
+    /**
+     * Convert the NumberNode ArrayList to an int array.
+     * @return an int array containing the values of the numberList
+     */
     public int[] getValues()
     {
         int[] values = new int[numberList.size()];
@@ -176,6 +226,10 @@ public class NumberList {
         return values;
     }
 
+    /**
+     * Return the numberList.
+     * @return the numberList of this NumberList object.
+     */
     public ArrayList<NumberNode> getList()
     {
         return numberList;
@@ -193,6 +247,10 @@ public class NumberList {
         numberList.add(index, new NumberNode(value));
     }
 
+    /**
+     * Represents the NumberList object as a string.
+     * @return the NumberList object represented as a string
+     */
     @Override
     public String toString()
     {

@@ -1,5 +1,10 @@
 package com.company;
 
+/**
+ * A ShortList contains a list of NumberNodes that are to be considered
+ * when looking whether a combo has been found.
+ * It also stores the index that it starts at.
+ */
 public class ShortList {
 
     private NumberNode[] nodeList;
